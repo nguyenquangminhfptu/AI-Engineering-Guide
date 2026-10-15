@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pt
+02_llm_internals/data/
+04_finetuning/out/
+05_evals/results/
+.pytest_cache/
+.env
