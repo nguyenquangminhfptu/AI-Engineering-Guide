@@ -6,4 +6,5 @@ __pycache__/
 04_finetuning/out/
 05_evals/results/
 .pytest_cache/
+.ipynb_checkpoints/
 .env

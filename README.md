@@ -30,6 +30,17 @@ export GEMINI_API_KEY=...     # free key: https://aistudio.google.com
 ```
 All LLM calls go through `common/llm.py` (Gemini).
 
+For Task 01 (implementing and training a mini GPT), start with the Vietnamese
+[complete guide](02_llm_internals/TASK_01_FULL_GUIDE.md). It covers cloning onto
+a fresh macOS/Linux/Windows machine, minimal dependencies, every lab class and
+function, experiments, checkpoint inference, and a report using the new machine's
+results. This local training lab needs `torch` and `pytest`, without an API key.
+
+For a step-by-step review with code, outputs, loss plots, and a generated report,
+open [TASK_01_REVIEW.ipynb](02_llm_internals/TASK_01_REVIEW.ipynb). After activating
+the environment, install `jupyterlab matplotlib` and run
+`python -m jupyterlab 02_llm_internals/TASK_01_REVIEW.ipynb`.
+
 What runs where:
 
 | Lab | Your M1 Mac (16 GB) | Needs NVIDIA GPU (Colab / cloud) | Needs API key |

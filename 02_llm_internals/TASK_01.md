@@ -3,6 +3,14 @@
 Mục tiêu: giải thích được từng bước từ văn bản đến token tiếp theo, tự sửa
 được từng thành phần và chạy một lần huấn luyện có train/validation loss.
 
+**Chuyển sang máy mới:** bắt đầu với [TASK_01_FULL_GUIDE.md](TASK_01_FULL_GUIDE.md).
+Tài liệu đó độc lập với output bị Git bỏ qua, có setup macOS/Linux/Windows,
+giải thích từng class/function và tạo báo cáo từ các lần chạy trên máy mới.
+
+**Trình bày review bằng notebook:** mở [TASK_01_REVIEW.ipynb](TASK_01_REVIEW.ipynb)
+để chạy từng cell và xem code, bảng shape, kết quả, biểu đồ loss cùng một chỗ.
+Notebook dùng lại model trong `mini_gpt.py`; kết quả nằm ở `out/notebook_task01/`.
+
 Để chuẩn bị nộp review, xem [TASK_01_REPORT.md](TASK_01_REPORT.md): đối chiếu
 yêu cầu, kiến trúc, kết quả thực nghiệm, bằng chứng kiểm thử và phần người học
 cần tự hoàn thiện. Log/checkpoint kiểm chứng nằm trong `out/task01_review/`.
@@ -30,22 +38,38 @@ chưa được nối với nhau. Các module khác đang nhập `GPT` và `train
 
 ## 2. Môi trường và cấu hình
 
-Chạy lệnh từ `course/`, dùng môi trường `.venv` hiện có:
+Mở terminal trong IDE và chuyển vào `course/`. Từ đây đến cuối bài, giữ
+terminal ở thư mục này:
 
 ```bash
+git rev-parse --show-toplevel
 source .venv/bin/activate
-python -c "import torch; print(torch.__version__)"
+python -c "import sys; print(sys.executable)"
 ```
 
-Nếu tạo môi trường mới, chỉ cần các lệnh sau cho task này:
+Đứng tại root repo chứa `02_llm_internals/` trước khi activate. Đường dẫn Python
+phải nằm trong `.venv/bin/` của repo. Khi setup trên máy mới, tạo `.venv` trước
+khi activate:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install torch
 ```
 
-Lab chạy cục bộ, không cần API key. Cấu hình kiến trúc nằm trong dataclass
+Task này dùng `torch` và `pytest`. Kiểm tra trước:
+
+```bash
+python -c "import torch, pytest; print('torch:', torch.__version__); print('pytest:', pytest.__version__)"
+```
+
+Nếu thiếu thư viện, cài trong môi trường đang activate:
+
+```bash
+python -m pip install torch pytest
+```
+
+Môi trường đã kiểm chứng dùng Python 3.11.9. Lab chạy cục bộ, không cần API key.
+Cấu hình kiến trúc nằm trong dataclass
 `Config` của `mini_gpt.py`; tham số dòng lệnh ghi đè mặc định cho từng lần chạy.
 Chưa cần thêm file YAML hoặc thư viện quản lý cấu hình.
 
@@ -94,49 +118,210 @@ Chuỗi đúng là embedding → position embedding → **N block, mỗi block c
 attention và FFN** → final LayerNorm → Linear. Không thêm một attention/FFN
 riêng trước chồng block.
 
-## 4. Chạy từng bước
+## 4. Quy trình chạy từ đầu đến cuối
 
-Đầu tiên kiểm tra tokenizer:
+### 4.1. Tạo nơi lưu kết quả và thông tin môi trường
+
+Sau khi hoàn thành mục 2, chạy:
+
+```bash
+mkdir -p 02_llm_internals/out/my_task01
+set -o pipefail
+python -c "import sys, torch, pytest; print(sys.version); print('torch:', torch.__version__); print('pytest:', pytest.__version__)" \
+  | tee 02_llm_internals/out/my_task01/environment.txt
+```
+
+`tee` vừa hiện output vừa lưu file. `pipefail` giữ mã lỗi của lệnh Python khi
+dùng pipeline. Các lần chạy cá nhân lưu ở `my_task01`; bằng chứng do trợ lý
+chạy trước đó vẫn ở `task01_review`. Thư mục `out/` được Git bỏ qua.
+
+### 4.2. Kiểm tra dữ liệu và tokenizer ký tự
+
+```bash
+python - <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, "02_llm_internals")
+from mini_gpt import CharTokenizer
+
+text = Path("02_llm_internals/sample_corpus.txt").read_text()
+tokenizer = CharTokenizer(text)
+sample = "hello AI"
+ids = tokenizer.encode(sample)
+print("Số ký tự:", len(text))
+print("Vocabulary:", len(tokenizer.chars))
+print("Token IDs:", ids)
+print("Decode:", tokenizer.decode(ids))
+assert tokenizer.decode(ids) == sample
+PY
+```
+
+Với corpus chưa sửa, phải thấy **2.004 ký tự**, **35 token trong vocabulary**
+và decode ra `hello AI`. Corpus minh họa này đủ để kiểm tra cơ chế huấn luyện;
+ba câu ngắn trong ảnh không đủ cho context 32 và split 90/10 của lab.
+
+Để thực hành BPE riêng, chạy thêm:
 
 ```bash
 python 02_llm_internals/bpe.py --merges 50 \
-  --text 02_llm_internals/sample_corpus.txt
+  --text 02_llm_internals/sample_corpus.txt \
+  2>&1 | tee 02_llm_internals/out/my_task01/bpe.log
 ```
 
-Sau đó chạy một lần huấn luyện ngắn. Script tự tạo thư mục `out/`:
+### 4.3. Chạy kiểm thử trước khi train
 
 ```bash
-python 02_llm_internals/mini_gpt.py \
-  --data 02_llm_internals/sample_corpus.txt \
-  --device cpu \
+python -m pytest 02_llm_internals/test_mini_gpt.py -q \
+  2>&1 | tee 02_llm_internals/out/my_task01/tests.log
+```
+
+Mốc hiện tại là **8 passed**. Nếu có test lỗi, đọc phần `FAILED` và sửa trước
+khi đi tiếp. Test bao gồm causal mask, gradient, tokenizer và lưu/nạp checkpoint.
+
+### 4.4. Train 100 bước để kiểm tra toàn bộ luồng
+
+```bash
+python -u 02_llm_internals/mini_gpt.py \
+  --data 02_llm_internals/sample_corpus.txt --device cpu \
   --n_layer 2 --n_head 4 --n_embd 64 --block_size 32 \
   --batch_size 8 --steps 100 --lr 0.003 --dropout 0.1 \
   --log_every 25 --sample_tokens 120 \
-  --out 02_llm_internals/out/task01_smoke.pt
+  --out 02_llm_internals/out/my_task01/model_100.pt \
+  2>&1 | tee 02_llm_internals/out/my_task01/train_100.log
 ```
 
-Script dành 90% đầu corpus để train và 10% cuối để validation; in loss ở
-bước 0, 25, 50, 75, 100; lưu checkpoint rồi sinh văn bản. Khởi tạo dùng seed
-1337. Đây là corpus minh họa với các câu cùng chủ đề, chỉ dùng kiểm tra cơ chế
-và luồng huấn luyện. Đánh giá chất lượng ngôn ngữ cần corpus lớn, đa dạng và
-tập kiểm tra độc lập. Ba câu ngắn trong ảnh không đủ cho context và split này.
+`-u` hiện log ngay. Script tự chia 90% đầu corpus cho train và 10% cuối cho
+validation; in loss tại bước 0, 25, 50, 75, 100; lưu weights, config và vocabulary;
+sau đó sinh thêm 120 token. Seed khởi tạo là 1337.
 
-Nếu đã cài dependencies của course (có `pytest`), chạy các kiểm tra offline:
+Kết quả kiểm chứng để đối chiếu (có thể khác nhẹ theo môi trường):
+
+```text
+device=cpu chars=2,004 vocab=35 params=0.10M
+step     0 | train 3.593 | val 3.591
+step   100 | train 2.306 | val 2.347
+saved 02_llm_internals/out/my_task01/model_100.pt
+=== sample ===
+```
+
+Sau lệnh này phải có `model_100.pt` và `train_100.log`. Văn bản mẫu còn lộn
+xộn là kết quả quan sát của mô hình nhỏ này; dùng train/val loss và test để
+đánh giá việc triển khai, đồng thời ghi rõ hạn chế của chất lượng văn bản.
+
+### 4.5. Train một lần mới với 500 bước để so sánh
 
 ```bash
-python -m pytest 02_llm_internals/test_mini_gpt.py -q
+python -u 02_llm_internals/mini_gpt.py \
+  --data 02_llm_internals/sample_corpus.txt --device cpu \
+  --n_layer 2 --n_head 4 --n_embd 64 --block_size 32 \
+  --batch_size 8 --steps 500 --lr 0.003 --dropout 0.1 \
+  --log_every 25 --sample_tokens 120 \
+  --out 02_llm_internals/out/my_task01/model_500.pt \
+  2>&1 | tee 02_llm_internals/out/my_task01/train_500.log
 ```
 
-Để quan sát lâu hơn, đổi `--steps 100` thành `--steps 500` và tên checkpoint
-thành `task01_500.pt`. Mỗi lần chỉ thay đổi một tham số để dễ giải thích kết quả.
+Đây là lần huấn luyện khởi tạo mới, không tiếp tục từ checkpoint 100 bước.
+Đổi số bước cũng đổi thời lượng warmup/cosine của lab. Giữ nguyên các tham số
+khác, gồm `log_every`, để dễ đối chiếu.
 
-Ghi kết quả vào `out/task01_notes.md`:
+Trong lần kiểm chứng, train loss cuối là **1.532**, val loss **2.373**. Hãy so
+sánh với lần 100 bước và giải thích khoảng cách train/validation; train lâu
+hơn không bảo đảm validation tốt hơn trên corpus nhỏ.
+
+### 4.6. Nạp checkpoint để sinh văn bản mà không train lại
+
+Chạy nguyên khối sau sau khi có `model_500.pt`. Lệnh lưu mẫu mới vào log:
+
+```bash
+python - <<'PY' | tee 02_llm_internals/out/my_task01/generate.log
+import sys
+import torch
+
+sys.path.insert(0, "02_llm_internals")
+from mini_gpt import Config, GPT
+
+checkpoint = torch.load(
+    "02_llm_internals/out/my_task01/model_500.pt",
+    map_location="cpu",
+    weights_only=True,
+)
+model = GPT(Config(**checkpoint["config"]))
+model.load_state_dict(checkpoint["model"])
+model.eval()
+
+chars = checkpoint["chars"]
+stoi = {char: i for i, char in enumerate(chars)}
+prompt = "hello "
+inputs = torch.tensor([[stoi[char] for char in prompt]], dtype=torch.long)
+torch.manual_seed(42)
+output = model.generate(inputs, max_new_tokens=120, temperature=0.8)
+print("Config:", checkpoint["config"])
+print("Sinh từ prompt:", repr(prompt))
+print("".join(chars[i] for i in output[0].tolist()))
+PY
+```
+
+`eval()` tắt dropout; `generate` đã có `torch.no_grad()`. Vocabulary lấy từ
+checkpoint phải khớp weights. Khi đổi prompt, dùng các ký tự đã có trong
+`chars`; ký tự mới sẽ gây `KeyError` trong ví dụ kiểm tra trực tiếp này.
+
+### 4.7. Tự thực hành và hoàn thiện báo cáo
+
+Làm phần tự code ở mục 5: viết lại từng hàm theo cách hiểu, chạy test rồi train
+lại khi thay đổi mã nguồn. Ghi cấu hình và kết quả thực tế vào ghi chép cá nhân.
+
+Trong `TASK_01_REPORT.md`, điền họ tên, phần đã tự triển khai, môi trường,
+loss đo được, mẫu sinh và nhận xét. Giữ rõ nguồn của từng lần chạy. Khi thay
+bằng chứng bằng lần chạy của bạn, sửa liên kết log/checkpoint tương ứng sang
+`out/my_task01/`. Đọc log đầy đủ trước khi kết luận về overfitting.
 
 ```markdown
-| Lần chạy | Config thay đổi | Train loss đầu/cuối | Val loss đầu/cuối | Nhận xét mẫu sinh |
-|---|---|---|---|---|
-| 01 | Cấu hình bắt đầu | ... | ... | ... |
+| Lần chạy | Train loss đầu/cuối | Val loss đầu/cuối | Nhận xét mẫu sinh |
+|---|---|---|---|
+| 100 bước | ... | ... | ... |
+| 500 bước | ... | ... | ... |
 ```
+
+Bạn đang mở `data/tinyshakespeare.txt`: sau khi hoàn thành hai lần chạy mẫu,
+có thể dùng nó bằng cách đổi `--data` và đặt tên checkpoint/log mới. Đây là
+thực nghiệm khác với corpus, vocabulary và mốc loss khác; ghi kết quả riêng.
+
+### 4.8. Đóng gói bài nộp sau khi cập nhật báo cáo
+
+Lệnh sau dành cho macOS có `zip`, chạy từ `course/`. Gói gồm mã nguồn,
+báo cáo, kết quả cá nhân và bằng chứng kiểm chứng có sẵn mà báo cáo tham chiếu:
+
+```bash
+zip -r -FS 02_llm_internals/out/my_task01/submission.zip \
+  02_llm_internals/TASK_01_REPORT.md \
+  02_llm_internals/TASK_01.md \
+  02_llm_internals/LESSON.md \
+  02_llm_internals/mini_gpt.py \
+  02_llm_internals/bpe.py \
+  02_llm_internals/test_mini_gpt.py \
+  02_llm_internals/sample_corpus.txt \
+  02_llm_internals/out/my_task01 \
+  -x '*.zip'
+unzip -t 02_llm_internals/out/my_task01/submission.zip
+```
+
+Kết quả kiểm tra archive phải báo không có lỗi. `-FS` đồng bộ nội dung archive
+với các file được chọn khi đóng gói lại. Gói được tạo từ trạng thái
+file tại thời điểm chạy lệnh; nếu sửa báo cáo hoặc chạy lại mô hình, đóng gói
+lại trước khi nộp. Sau khi hoàn tất, có thể rời môi trường bằng `deactivate`.
+
+### 4.9. Các lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|---|---|
+| `No such file or directory` | Kiểm tra `pwd` đang là `course/` và đường dẫn đã gõ đúng |
+| `No module named torch` / `pytest` | Activate `.venv`, kiểm tra `sys.executable`, cài bằng `python -m pip` |
+| Corpus quá ngắn | Dùng `sample_corpus.txt` hoặc giảm context; cả train và val phải đủ dài |
+| `n_embd must be divisible by n_head` | Dùng cặp `64 / 4` như cấu hình bắt đầu |
+| `MPS is unavailable` | Dùng `--device cpu` |
+| Không tìm thấy checkpoint | Chạy xong bước 4.5, đối chiếu dòng `saved` và đường dẫn bước 4.6 |
+| `KeyError` khi đổi prompt | Kiểm tra ký tự có trong vocabulary của checkpoint |
 
 ## 5. Tiêu chí hoàn thành và review
 
