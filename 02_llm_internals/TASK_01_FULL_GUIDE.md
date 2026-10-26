@@ -8,6 +8,9 @@ Tài liệu dành cho máy mới: bắt đầu chỉ với source code clone t�
 trường, tự train và thu thập bằng chứng để báo cáo. Các class/function dưới đây
 được giải thích theo implementation hiện có, không yêu cầu framework huấn luyện khác.
 
+Nếu muốn bắt đầu bằng một checklist ngắn theo đúng thứ tự thao tác, mở
+[TASK_01_SETUP.md](TASK_01_SETUP.md), rồi quay lại đây để tra cứu từng hàm.
+
 Để trình bày code và kết quả trực tiếp khi review, dùng
 [TASK_01_REVIEW.ipynb](TASK_01_REVIEW.ipynb). Notebook gọi lại `mini_gpt.py`, chạy
 hai ngân sách, vẽ loss, demo reload và tạo bản nháp báo cáo. Đọc tài liệu này

@@ -30,7 +30,11 @@ export GEMINI_API_KEY=...     # free key: https://aistudio.google.com
 ```
 All LLM calls go through `common/llm.py` (Gemini).
 
-For Task 01 (implementing and training a mini GPT), start with the Vietnamese
+For a fresh machine, follow the Vietnamese
+[Task 01 setup checklist](02_llm_internals/TASK_01_SETUP.md) in order: clone,
+create a virtual environment, install packages, select the kernel, and run the notebook.
+
+For Task 01 (implementing and training a mini GPT), read the Vietnamese
 [complete guide](02_llm_internals/TASK_01_FULL_GUIDE.md). It covers cloning onto
 a fresh macOS/Linux/Windows machine, minimal dependencies, every lab class and
 function, experiments, checkpoint inference, and a report using the new machine's

@@ -3,8 +3,10 @@
 Mục tiêu: giải thích được từng bước từ văn bản đến token tiếp theo, tự sửa
 được từng thành phần và chạy một lần huấn luyện có train/validation loss.
 
-**Chuyển sang máy mới:** bắt đầu với [TASK_01_FULL_GUIDE.md](TASK_01_FULL_GUIDE.md).
-Tài liệu đó độc lập với output bị Git bỏ qua, có setup macOS/Linux/Windows,
+**Chuyển sang máy mới:** làm theo [TASK_01_SETUP.md](TASK_01_SETUP.md) từ bước 1
+đến bước 7 để chạy notebook. Khi cần tra cứu sâu, đọc
+[TASK_01_FULL_GUIDE.md](TASK_01_FULL_GUIDE.md).
+Tài liệu đầy đủ độc lập với output bị Git bỏ qua, có setup macOS/Linux/Windows,
 giải thích từng class/function và tạo báo cáo từ các lần chạy trên máy mới.
 
 **Trình bày review bằng notebook:** mở [TASK_01_REVIEW.ipynb](TASK_01_REVIEW.ipynb)
