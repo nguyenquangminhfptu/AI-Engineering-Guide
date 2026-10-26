@@ -228,3 +228,61 @@ và tokenizer; accuracy cao hơn tốt hơn theo tiêu chí chọn đúng ký t�
 Với file văn bản mới chưa dùng train, dùng `--split all` để đánh giá toàn file.
 Dataset phải đủ dài và có các ký tự trong vocabulary. Corpus/validation hiện
 tại rất nhỏ, chưa đủ đánh giá tổng quát hoặc khả năng chatbot.
+
+## 9. Thực nghiệm nhiều dữ liệu hơn với Tiny Shakespeare
+
+Corpus mẫu 2.004 ký tự phù hợp kiểm tra luồng train. Muốn quan sát model học
+chính tả và các cụm dài hơn, làm một thực nghiệm riêng với Tiny Shakespeare
+(bản đang dùng có 1.115.394 ký tự và 65 ký tự khác nhau). Văn bản đích là tiếng
+Anh theo phong cách kịch, không phải hội thoại hỏi đáp hoặc tiếng Việt.
+
+Nếu máy mới chưa có cache, tải corpus bằng lệnh một dòng này từ root repo:
+
+```bash
+python -c "from pathlib import Path; from urllib.request import urlretrieve; p=Path('02_llm_internals/data/tinyshakespeare.txt'); p.parent.mkdir(parents=True, exist_ok=True); urlretrieve('https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt', p); print(p)"
+```
+
+Chạy thử cấu hình lớn hơn, lưu model ở thư mục khác để giữ baseline:
+
+```bash
+python -u 02_llm_internals/mini_gpt.py \
+  --data 02_llm_internals/data/tinyshakespeare.txt --device cpu \
+  --n_layer 4 --n_head 4 --n_embd 128 --block_size 128 \
+  --batch_size 8 --steps 3000 --lr 0.001 --dropout 0.1 \
+  --log_every 200 --sample_tokens 220 \
+  --out 02_llm_internals/out/shakespeare_v1/model.pt
+```
+
+Trên PowerShell ghép thành một dòng, bỏ các ký tự nối dòng `\`. Cấu hình này
+có 818.048 tham số khi vocabulary là 65; tốn nhiều thời gian hơn baseline.
+Thời gian phụ thuộc CPU và tải máy, không dùng thời gian vài giây của model
+104.384 tham số để ước lượng trực tiếp.
+
+Lần kiểm chứng ngày 26/10/2026 với cấu hình này đạt train loss 1.777 và val
+loss 1.915 tại bước 3000, từ các mốc ban đầu 4.229/4.226. Log ghi tổng thời
+gian vòng train 1179 giây (~19,7 phút), gồm một khoảng tăng thời gian lớn chưa
+rõ nguyên nhân. Mẫu sinh có thêm từ/cấu trúc tiếng Anh nhưng vẫn sai chính tả
+và ngữ pháp; đây chưa phải cấu hình bảo đảm tạo câu hoàn chỉnh có nghĩa.
+
+Thử checkpoint mới sau khi lệnh train hoàn tất:
+
+```bash
+python 02_llm_internals/probe_model.py \
+  --checkpoint 02_llm_internals/out/shakespeare_v1/model.pt \
+  --prompt "the " --new-tokens 160 --temperature 0.7 --top-k 10
+```
+
+Dữ liệu nhiều hơn cần đi cùng đủ ngân sách học, context/capacity phù hợp và
+theo dõi validation. Tăng số bước trên corpus cũ có thể làm tăng overfitting.
+Thực nghiệm trên thay cả dữ liệu lẫn cấu hình, nên dùng để quan sát kết quả
+của cấu hình mới, không quy toàn bộ cải thiện cho riêng lượng dữ liệu.
+
+Loss trên corpus mới có vocabulary khác không được so trực tiếp như hai lần
+đánh giá cùng dữ liệu/tokenizer. Giữ log, cấu hình và mẫu sinh của từng thực
+nghiệm để giải thích khi review. Model nhỏ vẫn có thể sinh sai từ/ngữ pháp.
+
+Ngoài chất lượng ngôn ngữ, `generate` hiện dừng theo số ký tự mới, nên có thể
+cắt giữa từ/câu. Muốn định dạng đầu ra thành trọn câu cần cơ chế dừng theo dấu
+kết câu hoặc EOS phù hợp. Cắt ở dấu chấm chỉ sửa cách dừng, không chứng minh
+câu đúng ngữ pháp/ngữ nghĩa. Corpus tốt, train tốt và quy tắc dừng là các phần
+riêng cần xem xét.
