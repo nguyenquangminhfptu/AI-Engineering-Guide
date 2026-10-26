@@ -4,6 +4,23 @@ Dùng file này để bắt đầu. Chạy và trình bày bằng
 [TASK_01_REVIEW.ipynb](TASK_01_REVIEW.ipynb); khi cần hiểu từng class/function,
 tra cứu [TASK_01_FULL_GUIDE.md](TASK_01_FULL_GUIDE.md).
 
+**Bạn chỉ mở/chạy notebook, nhưng cần giữ đủ các file phụ thuộc.** Cách dễ
+nhất là clone cả repo. Nếu copy thủ công, giữ nguyên cấu trúc tối thiểu sau:
+
+```text
+thu-muc-repo/
+└── 02_llm_internals/
+    ├── TASK_01_REVIEW.ipynb  # File bạn mở và chạy
+    ├── sample_corpus.txt    # Dữ liệu train
+    ├── mini_gpt.py          # Model và hàm train được notebook import
+    ├── test_mini_gpt.py     # Các test notebook sẽ gọi
+    └── bpe.py               # Notebook đọc hash khi tạo metadata
+```
+
+Chỉ copy `.txt` và `.ipynb` thì chưa đủ cho notebook hiện tại. Các file Python
+đi cùng được dùng tự động; không cần chạy riêng trước khi mở notebook.
+Mang thêm file setup này và hướng dẫn đầy đủ để tra cứu.
+
 ## 1. Chuẩn bị Git và Python
 
 Cài **Git** và **Python 3.11** nếu máy chưa có. Mở Terminal trong IDE.
