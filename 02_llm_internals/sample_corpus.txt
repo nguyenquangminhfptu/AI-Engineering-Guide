@@ -1,0 +1,35 @@
+hello world.
+hello AI.
+AI is interesting.
+we learn to build a small language model.
+a language model predicts the next token from the tokens before it.
+this exercise uses one character as one token.
+a space is a character and a newline is a character too.
+the vocabulary contains the different characters in this text.
+the tokenizer maps each character to an integer identifier.
+decoding maps the identifiers back to readable text.
+an embedding turns a token identifier into a learned vector.
+position embeddings tell the model where tokens occur in a sequence.
+changing the order of words can change the meaning of a sentence.
+attention combines information from the visible tokens.
+a query is compared with keys to compute attention scores.
+attention weights are used to mix value vectors.
+the causal mask hides future positions during training.
+each attention head works with a smaller part of the representation.
+the feed forward network transforms the vector at each position.
+the activation function in this model is GELU.
+residual connections add the input back to a transformed representation.
+layer normalization is applied before attention and the feed forward network.
+several transformer blocks can be stacked in sequence.
+the output layer produces one logit for every vocabulary item.
+cross entropy compares the logits with the correct next token.
+backpropagation computes gradients of the loss.
+the optimizer updates the weights using those gradients.
+training repeats this process on batches of token sequences.
+validation uses a separate part of the text without updating weights.
+a small training loss alone does not measure generalization.
+generation selects a new token and appends it to the context.
+the model then predicts another token using the updated context.
+this small corpus is a teaching example for checking the training pipeline.
+record the configuration, the training loss, and the validation loss.
+inspect the generated text and explain what the experiment demonstrates.

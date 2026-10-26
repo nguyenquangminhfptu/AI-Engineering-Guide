@@ -2,6 +2,7 @@
 __pycache__/
 *.pt
 02_llm_internals/data/
+02_llm_internals/out/
 04_finetuning/out/
 05_evals/results/
 .pytest_cache/

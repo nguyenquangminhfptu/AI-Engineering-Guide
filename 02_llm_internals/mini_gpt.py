@@ -3,6 +3,7 @@
 Run:  python mini_gpt.py                      # ~1M params, a few minutes on an M1
       python mini_gpt.py --steps 3000 --n_layer 6 --n_embd 192
       python mini_gpt.py --data my_text.txt
+      python mini_gpt.py --device cpu --n_layer 2 --n_embd 64 --steps 100
 
 Same architecture family as GPT-2/Llama, just tiny and character-level.
 Module 04 imports GPT from this file to teach LoRA.
@@ -208,30 +209,53 @@ def main():
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--batch_size", type=int, default=32)
     ap.add_argument("--n_layer", type=int, default=4)
+    ap.add_argument("--n_head", type=int, default=4)
     ap.add_argument("--n_embd", type=int, default=128)
     ap.add_argument("--block_size", type=int, default=128)
+    ap.add_argument("--dropout", type=float, default=0.1)
+    ap.add_argument("--device", choices=("auto", "cpu", "mps", "cuda"), default="auto")
+    ap.add_argument("--log_every", type=int, default=200)
+    ap.add_argument("--sample_tokens", type=int, default=400)
     ap.add_argument("--out", default=str(HERE / "mini_gpt.pt"))
     a = ap.parse_args()
 
+    if min(a.n_layer, a.n_head, a.n_embd, a.block_size, a.batch_size, a.steps, a.log_every) < 1:
+        ap.error("layers, heads, embedding size, context, batch size, steps and log interval must be positive")
+    if a.n_embd % a.n_head != 0:
+        ap.error("--n_embd must be divisible by --n_head (e.g. 64 / 4 = 16 dimensions per head)")
+    if not 0 <= a.dropout < 1 or a.lr <= 0 or a.sample_tokens < 0:
+        ap.error("require 0 <= --dropout < 1, --lr > 0 and --sample_tokens >= 0")
+    if a.device == "cuda" and not torch.cuda.is_available():
+        ap.error("CUDA is unavailable; use --device cpu or auto")
+    if a.device == "mps" and not torch.backends.mps.is_available():
+        ap.error("MPS is unavailable; use --device cpu or auto")
+
     torch.manual_seed(1337)
-    device = pick_device()
+    device = pick_device() if a.device == "auto" else a.device
     text = load_text(a.data)
     tok = CharTokenizer(text)
     data = torch.tensor(tok.encode(text), dtype=torch.long)
     n = int(0.9 * len(data))                       # 90/10 split: val text is NEVER trained on
     train_data, val_data = data[:n], data[n:]
+    if min(len(train_data), len(val_data)) < a.block_size + 2:
+        ap.error(f"each 90/10 data split needs at least {a.block_size + 2} characters; "
+                 "provide more text or reduce --block_size")
 
-    cfg = Config(vocab_size=len(tok.chars), block_size=a.block_size, n_layer=a.n_layer, n_head=4, n_embd=a.n_embd)
+    cfg = Config(vocab_size=len(tok.chars), block_size=a.block_size, n_layer=a.n_layer,
+                 n_head=a.n_head, n_embd=a.n_embd, dropout=a.dropout)
     model = GPT(cfg).to(device)
     print(f"device={device} chars={len(text):,} vocab={cfg.vocab_size} params={sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
     print(f"expected initial loss ≈ ln(vocab) = {math.log(cfg.vocab_size):.3f}")
 
-    train(model, train_data, val_data, a.steps, a.lr, a.batch_size, device)
+    train(model, train_data, val_data, a.steps, a.lr, a.batch_size, device, log_every=a.log_every)
 
-    torch.save({"model": model.state_dict(), "config": cfg.__dict__, "chars": tok.chars}, a.out)
+    out = Path(a.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"model": model.state_dict(), "config": cfg.__dict__, "chars": tok.chars}, out)
     print(f"saved {a.out}\n\n=== sample ===")
-    start = torch.tensor([tok.encode("\n")], device=device)
-    print(tok.decode(model.generate(start, 400)[0].tolist()))
+    model.eval()  # disable dropout while sampling
+    start = torch.tensor([[tok.stoi.get("\n", 0)]], dtype=torch.long, device=device)
+    print(tok.decode(model.generate(start, a.sample_tokens)[0].tolist()))
 
 
 if __name__ == "__main__":

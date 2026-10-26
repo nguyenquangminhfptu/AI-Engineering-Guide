@@ -112,6 +112,12 @@ At your company you'll almost always **start from an instruct model and do SFT (
 
 ## Labs
 
+For the first architecture assignment, follow [TASK_01.md](TASK_01.md)
+(Vietnamese): file layout, a small local corpus, CPU configuration, and a
+decoder-only implementation checklist. CLI options in `mini_gpt.py` include
+`--device`, `--n_head`, `--dropout`, `--log_every`, and `--sample_tokens`.
+For the review report and recorded experiments, see [TASK_01_REPORT.md](TASK_01_REPORT.md).
+
 ```bash
 python bpe.py                       # train a tiny BPE tokenizer, see merges and compression
 python mini_gpt.py                  # train a ~1M-param GPT on your Mac (MPS) in a few minutes
