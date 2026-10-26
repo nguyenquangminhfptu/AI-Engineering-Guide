@@ -182,3 +182,49 @@ Source, notebook và hướng dẫn được Git lưu khi commit/push. `.venv/`,
 log, biểu đồ, báo cáo và checkpoint như artifacts của bài nộp.
 
 Khi cần giải thích sâu hoặc xử lý lỗi, xem [hướng dẫn đầy đủ](TASK_01_FULL_GUIDE.md).
+
+## 8. Thử khả năng model đã train
+
+Dùng [probe_model.py](probe_model.py) để nạp checkpoint, nhập prompt và đo
+next-character prediction mà không train lại. Từ root repo:
+
+```bash
+python 02_llm_internals/probe_model.py --checkpoint 02_llm_internals/out/notebook_task01/model_500.pt
+```
+
+Gõ `hello `, `AI is ` hoặc `the model ` tại `Prompt>`. Model sẽ in 5 ký tự có
+xác suất cao nhất và viết tiếp văn bản. Gõ `/quit` để thoát. Nếu bạn dùng bản
+chạy thử cá nhân, thay `out/notebook_task01/` bằng `out/local_trial_20261026/`.
+
+Thử một prompt cố định với tham số sampling:
+
+```bash
+python 02_llm_internals/probe_model.py \
+  --checkpoint 02_llm_internals/out/notebook_task01/model_500.pt \
+  --prompt "hello " --new-tokens 80 --temperature 0.8 --seed 42
+```
+
+Trên PowerShell, ghép các dòng thành một dòng, bỏ ký tự nối dòng `\`.
+Có thể đổi temperature thành 0.3 hoặc 1.2 để quan sát phân phối sinh; giá trị
+phải lớn hơn 0. Đổi sampling không cập nhật trọng số. Prompt phải chứa các
+ký tự có trong vocabulary; công cụ báo lỗi thay vì tự bỏ ký tự chưa biết.
+
+Đo trên 10% cuối corpus gốc, cùng split với lúc train:
+
+```bash
+python 02_llm_internals/probe_model.py \
+  --checkpoint 02_llm_internals/out/notebook_task01/model_500.pt \
+  --eval-text 02_llm_internals/sample_corpus.txt --split val \
+  --out 02_llm_internals/out/notebook_task01/probe_500.json
+```
+
+Đổi checkpoint và tên JSON sang `model_100.pt`/`probe_100.json` để so sánh.
+Các chỉ số là cross-entropy, perplexity, top-1 và top-5 accuracy của **ký tự
+tiếp theo**, không phải độ đúng của câu trả lời. Evaluation chấm từng mục
+tiêu một lần với tối đa context 32; khác cách ước lượng batch ngẫu nhiên trong
+log train nên loss có thể khác. Perplexity thấp hơn tốt hơn trên cùng dữ liệu
+và tokenizer; accuracy cao hơn tốt hơn theo tiêu chí chọn đúng ký tự cao nhất.
+
+Với file văn bản mới chưa dùng train, dùng `--split all` để đánh giá toàn file.
+Dataset phải đủ dài và có các ký tự trong vocabulary. Corpus/validation hiện
+tại rất nhỏ, chưa đủ đánh giá tổng quát hoặc khả năng chatbot.

@@ -1205,6 +1205,14 @@ ghi lại hash/version corpus. Với cấu hình mẫu cố định, mỗi step 
 B*T vị trí; thêm dữ liệu không tự tăng số step. Thực nghiệm mới cần được
 đánh giá riêng thay vì chép số liệu của `sample_corpus.txt` vào báo cáo đó.
 
+### 12.6. Thử trực tiếp checkpoint đã lưu
+
+Sau khi có model, dùng `probe_model.py` để nhập prompt tương tác, xem các ký
+tự dự đoán cao nhất hoặc đo loss/perplexity/accuracy mà không train lại.
+Lệnh thực hành ở [mục 8 của hướng dẫn setup](TASK_01_SETUP.md#8-thử-khả-năng-model-đã-train).
+Thư viện vẫn chỉ cần PyTorch; `test_probe_model.py` kiểm tra evaluation không
+nhìn trước target, phép đo với phân phối đều và nạp checkpoint/sampling.
+
 ## 13. Tạo báo cáo của máy mới
 
 ### 13.1. Thu thập kết quả từ log và checkpoint thực tế
