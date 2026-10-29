@@ -4,6 +4,12 @@
 
 You don't need a math month. You need the ~8 ideas below, and the code in `mini_gpt.py` shows each one.
 
+**Đã train xong và muốn hiểu để tự code/review?** Đọc
+[Hiểu GPT mini để tự code và trình bày review](GPT_REVIEW_GUIDE.md) trước.
+Tài liệu tiếng Việt đi từ decoder-only, attention và position embedding đến
+activation, pretrain objective, loss, inference và đánh giá checkpoint đã chạy.
+Có lộ trình tự viết lại cùng kịch bản review 5–7 phút.
+
 ---
 
 ## 1. An LLM is a next-token predictor

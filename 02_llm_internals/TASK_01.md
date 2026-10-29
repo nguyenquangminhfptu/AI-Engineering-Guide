@@ -3,6 +3,10 @@
 Mục tiêu: giải thích được từng bước từ văn bản đến token tiếp theo, tự sửa
 được từng thành phần và chạy một lần huấn luyện có train/validation loss.
 
+**Đã chạy xong bài:** dùng [GPT_REVIEW_GUIDE.md](GPT_REVIEW_GUIDE.md) để học
+kiến trúc từ code hiện có, đọc kết quả đã train và luyện tự viết lại model
+trước buổi review.
+
 **Chuyển sang máy mới:** làm theo [TASK_01_SETUP.md](TASK_01_SETUP.md) từ bước 1
 đến bước 7 để chạy notebook. Khi cần tra cứu sâu, đọc
 [TASK_01_FULL_GUIDE.md](TASK_01_FULL_GUIDE.md).
